@@ -1,10 +1,12 @@
 import os
+import re
 import pickle
 import numpy as np
 import unicodedata as ud
 from tqdm import tqdm
 from pyvi import ViTokenizer
 from sklearn.decomposition import TruncatedSVD
+from sklearn.neighbors import NearestNeighbors
 from gensim.parsing.preprocessing import strip_numeric
 from gensim.models.doc2vec import Doc2Vec
 from gensim.models.doc2vec import TaggedDocument
@@ -24,6 +26,11 @@ from settings import SVD_OUTPUT_FEATURE
 from settings import SVD_MODEL_PATH
 from settings import SVD_SOLVER
 from settings import SVD_ITERATION
+from settings import FILE_LIST_PATH
+from settings import file_list
+from settings import stop_words
+from settings import KNN_N_NEIGHBORS
+from settings import KNN_MODEL_PATH
 
 
 class BaseTextFunction():
@@ -66,6 +73,7 @@ class BaseTextFunction():
         '''
         return strip_punctuation(document)
 
+
     @staticmethod
     def remove_number(document):
         '''Remove number from a document.
@@ -99,14 +107,15 @@ class BaseTextFunction():
 
     @staticmethod
     def tokenize(document):
-        '''Tokeinize a document into list of tokens
+        '''Tokeinize a document into list of tokens and remove stop words
         # Arguments
             document: input document for tokenizing
         # Return
             list of tokens of the input document
         '''
         tokens = ViTokenizer.tokenize(document)
-        return tokens.split(' ')
+        tokens = tokens.split(' ')
+        return [t for t in tokens if t not in stop_words]
 
 
 class BaseDoc2vecFunction():
@@ -130,10 +139,11 @@ class BaseDoc2vecFunction():
         # Return
             list of tagged document
         '''
+        print('_'*100)
+        print('Creating tagged document for training doc2vec')
         tagged_document = []
-        file_list = os.listdir(FULL_DATA_FOLDER)
         for index, f in tqdm(enumerate(file_list)):
-            with open(os.path.join(FULL_DATA_FOLDER, f), 'r') as fr:
+            with open(f, 'r') as fr:
                 content = BaseTextFunction.process_document(fr.read())
                 words = BaseTextFunction.tokenize(content)
                 tagged_document.append(TaggedDocument(
@@ -160,8 +170,8 @@ class BaseDoc2vecFunction():
         # Return
         '''
         self.doc2vec_model.build_vocab(self.tagged_document)
-        print('Begin training')
         print('_'*100)
+        print('Begin training')
         for epoch in range(MAX_EPOCHS):
             print('Iteration', epoch + 1)
             self.doc2vec_model.train(
@@ -233,9 +243,8 @@ class BaseSVDFunctions():
         '''Fit data to svd model
         '''
         list_arr = []
-        file_list = os.listdir(FULL_DATA_FOLDER)
         for f in tqdm(file_list):
-            with open(os.path.join(FULL_DATA_FOLDER, f), 'r') as fr:
+            with open(f, 'r') as fr:
                 content = BaseTextFunction.process_document(fr.read())
                 words = BaseTextFunction.tokenize(content)
                 embedding_vector = doc2vec_model.infer_vector(words)
@@ -259,3 +268,38 @@ class BaseSVDFunctions():
         '''
         with open(SVD_MODEL_PATH, 'rb') as f:
             return pickle.load(f)
+
+
+class BaseKNNFunction():
+    '''
+    '''
+    def __init__(self):
+        self.knn_model = self.create_knn()
+
+    def create_knn(self):
+        return NearestNeighbors(KNN_N_NEIGHBORS)
+
+    def fit_knn(self, data):
+        self.knn_model.fit(data)
+        return self.knn_model
+
+    def save_knn_model(self):
+        with open(KNN_MODEL_PATH, 'wb') as f:
+            pickle.dump(self.knn_model, f)
+
+    @staticmethod
+    def load_knn():
+        with open(KNN_MODEL_PATH, 'rb') as f:
+            return pickle.load(f)
+
+    @staticmethod
+    def search_knn(knn_model, query_vector):
+        result = knn_model.kneighbors(query_vector)
+        return result
+
+
+def create_file_list():
+    file_list = sorted(os.listdir(FULL_DATA_FOLDER))
+    file_list = [os.path.join(FULL_DATA_FOLDER, f) for f in file_list]
+    with open(FILE_LIST_PATH, 'wb') as f:
+        pickle.dump(file_list, f)
