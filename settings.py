@@ -19,11 +19,11 @@ SUMMARY_DATA_FOLDER = os.path.join(TUOITRE_DATA_FOLDER, 'summary')
 TRAINED_MODEL_FOLDER = os.path.join(BASE_DIR, 'trained_model')
 DOC2VEC_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'doc2vec.model')
 MAX_EPOCHS = 50
-VECTOR_SIZE = 1024
+VECTOR_SIZE = 2048
 ALPHA = 0.001
 MIN_ALPHA = 0.00025
 MIN_COUNT = 1
-DM = 1 # distributed memory
+DM = 1  # distributed memory
 
 # SVD config
 SVD_OUTPUT_FEATURE = 256

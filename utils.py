@@ -1,5 +1,4 @@
 import os
-import re
 import pickle
 import numpy as np
 import unicodedata as ud
@@ -73,7 +72,6 @@ class BaseTextFunction():
         '''
         return strip_punctuation(document)
 
-
     @staticmethod
     def remove_number(document):
         '''Remove number from a document.
@@ -130,7 +128,6 @@ class BaseDoc2vecFunction():
     '''
     def __init__(self):
         self.doc2vec_model = self.create_doc2vec_model()
-        self.tagged_document = self.create_tagged_document()
 
     def create_tagged_document(self):
         '''Create tagged document before training doc2vec algorithm
@@ -169,13 +166,14 @@ class BaseDoc2vecFunction():
         # Arguments
         # Return
         '''
-        self.doc2vec_model.build_vocab(self.tagged_document)
+        tagged_document = self.create_tagged_document()
+        self.doc2vec_model.build_vocab(tagged_document)
         print('_'*100)
         print('Begin training')
         for epoch in range(MAX_EPOCHS):
-            print('Iteration', epoch + 1)
+            print('Epoch', epoch + 1)
             self.doc2vec_model.train(
-                self.tagged_document,
+                tagged_document,
                 total_examples=self.doc2vec_model.corpus_count,
                 epochs=self.doc2vec_model.iter
             )
@@ -185,7 +183,6 @@ class BaseDoc2vecFunction():
         print('_'*100)
         print('Finish training after', MAX_EPOCHS, 'epochs')
         print('Save doc2vec model at', DOC2VEC_MODEL_PATH)
-        return self.doc2vec_model
 
     def save_doc2vec_model(self):
         '''Save a doc2vec model after training
@@ -198,14 +195,12 @@ class BaseDoc2vecFunction():
             os.mkdir(TRAINED_MODEL_FOLDER)
         self.doc2vec_model.save(DOC2VEC_MODEL_PATH)
 
-    @staticmethod
-    def load_doc2vec_model():
+    def load_doc2vec_model(self):
         '''Load doc2vec mode from file
         '''
-        return Doc2Vec.load(DOC2VEC_MODEL_PATH)
+        self.doc2vec_model = Doc2Vec.load(DOC2VEC_MODEL_PATH)
 
-    @staticmethod
-    def create_document_embedding(doc2vec_model, document):
+    def create_document_embedding(self, document):
         '''Generate document embedding from doc2vec model
         # Arguents
             doc2vec_model: a trained doc2vec model
@@ -215,7 +210,12 @@ class BaseDoc2vecFunction():
         '''
         document = BaseTextFunction.process_document(document)
         document = BaseTextFunction.tokenize(document)
-        return doc2vec_model.infer_vector(document)
+        return self.doc2vec_model.infer_vector(
+            doc_words=document,
+            alpha=ALPHA,
+            min_alpha=MIN_ALPHA,
+            steps=MAX_EPOCHS*2,
+        )
 
 
 class BaseSVDFunctions():
@@ -229,6 +229,8 @@ class BaseSVDFunctions():
     '''
     def __init__(self):
         self.svd_model = self.create_svd_model()
+        self.doc2vec_obj = BaseDoc2vecFunction()
+        self.doc2vec_obj.load_doc2vec_model()
 
     def create_svd_model(self):
         '''Create SVD from parameters in setting file
@@ -239,15 +241,14 @@ class BaseSVDFunctions():
             n_iter=SVD_ITERATION
         )
 
-    def fit_svd_model(self, doc2vec_model):
+    def fit_svd_model(self):
         '''Fit data to svd model
         '''
+        print('Building SVD model')
         list_arr = []
         for f in tqdm(file_list):
             with open(f, 'r') as fr:
-                content = BaseTextFunction.process_document(fr.read())
-                words = BaseTextFunction.tokenize(content)
-                embedding_vector = doc2vec_model.infer_vector(words)
+                embedding_vector = self.doc2vec_obj.create_document_embedding(fr.read())
                 list_arr.append(embedding_vector)
         list_arr = np.array(list_arr)
         self.svd_model.fit(list_arr)
@@ -262,12 +263,18 @@ class BaseSVDFunctions():
         with open(SVD_MODEL_PATH, 'wb') as f:
             pickle.dump(self.svd_model, f)
 
-    @staticmethod
-    def load_svd_model():
+    def create_embedding_svd(self, document):
+        '''Create svd embedding for a document
+        '''
+        doc2vec_embedding = self.doc2vec_obj.create_document_embedding(document)
+        svd_embedding = self.svd_model.transform(np.array([doc2vec_embedding]))
+        return np.squeeze(svd_embedding)
+
+    def load_svd_model(self):
         '''Load svd model from file
         '''
         with open(SVD_MODEL_PATH, 'rb') as f:
-            return pickle.load(f)
+            self.svd_model = pickle.load(f)
 
 
 class BaseKNNFunction():
@@ -275,31 +282,52 @@ class BaseKNNFunction():
     '''
     def __init__(self):
         self.knn_model = self.create_knn()
+        self.svd_obj = BaseSVDFunctions()
+        self.svd_obj.load_svd_model()
 
     def create_knn(self):
         return NearestNeighbors(KNN_N_NEIGHBORS)
 
-    def fit_knn(self, data):
-        self.knn_model.fit(data)
+    def fit_knn(self):
+        '''Fit KNN model to data
+        '''
+        print('Building KNN model')
+        list_arr = []
+        for f in tqdm(file_list):
+            with open(f, 'r') as fr:
+                svd_embedding = self.svd_obj.create_embedding_svd(fr.read())
+                list_arr.append(svd_embedding)
+        list_arr = np.array(list_arr)
+        self.knn_model.fit(list_arr)
+        self.save_knn_model()
         return self.knn_model
 
     def save_knn_model(self):
+        '''Save KNN model to file
+        '''
         with open(KNN_MODEL_PATH, 'wb') as f:
             pickle.dump(self.knn_model, f)
 
-    @staticmethod
-    def load_knn():
+    def load_knn(self):
+        '''Load KNN model from file
+        '''
         with open(KNN_MODEL_PATH, 'rb') as f:
-            return pickle.load(f)
+            self.knn_model = pickle.load(f)
 
-    @staticmethod
-    def search_knn(knn_model, query_vector):
-        result = knn_model.kneighbors(query_vector)
+    def search_knn(self, document):
+        '''Search for similar documents
+        '''
+        svd_embedding = self.svd_obj.create_embedding_svd(document)
+        result = self.knn_model.kneighbors(svd_embedding)
         return result
 
 
 def create_file_list():
+    '''Create file list
+    '''
     file_list = sorted(os.listdir(FULL_DATA_FOLDER))
-    file_list = [os.path.join(FULL_DATA_FOLDER, f) for f in file_list]
     with open(FILE_LIST_PATH, 'wb') as f:
         pickle.dump(file_list, f)
+
+if __name__ == '__main__':
+    create_file_list()
