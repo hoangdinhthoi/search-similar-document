@@ -40,6 +40,7 @@ class BaseTextFunction():
         remove_special(document)
         remove_number(document)
         processe_document(document)
+        tokenize(document)
     '''
     @staticmethod
     def to_lower(document):
@@ -125,6 +126,7 @@ class BaseDoc2vecFunction():
         train_doc2vec_model(self)
         save_doc2vec_model(self)
         load_doc2vec_model(self)
+        create_document_embedding(self, document)
     '''
     def __init__(self):
         self.doc2vec_model = self.create_doc2vec_model()
@@ -188,7 +190,7 @@ class BaseDoc2vecFunction():
         '''Save a doc2vec model after training
         # Arguments
             model: doc2vec model after training, default
-                path to is ./trained_model/doc2vec.model
+                path to save is ./trained_model/doc2vec.model
         # Return
         '''
         if not os.path.exists(TRAINED_MODEL_FOLDER):
@@ -197,13 +199,14 @@ class BaseDoc2vecFunction():
 
     def load_doc2vec_model(self):
         '''Load doc2vec mode from file
+        # Arguments
+        # Return
         '''
         self.doc2vec_model = Doc2Vec.load(DOC2VEC_MODEL_PATH)
 
     def create_document_embedding(self, document):
         '''Generate document embedding from doc2vec model
         # Arguents
-            doc2vec_model: a trained doc2vec model
             document: input document to generate embedding
         # Return
             embedding of the input document
@@ -223,8 +226,9 @@ class BaseSVDFunctions():
     # Methods
         __init__(self)
         create_svd_model(self)
-        fit_svd_model(self, doc2vec_model)
+        fit_svd_model(self)
         save_svd_model(self)
+        create_embedding_svd(self, document)
         load_svd_model(self)
     '''
     def __init__(self):
@@ -234,6 +238,8 @@ class BaseSVDFunctions():
 
     def create_svd_model(self):
         '''Create SVD from parameters in setting file
+        # Arguments
+        # Return
         '''
         return TruncatedSVD(
             n_components=SVD_OUTPUT_FEATURE,
@@ -243,6 +249,8 @@ class BaseSVDFunctions():
 
     def fit_svd_model(self):
         '''Fit data to svd model
+        # Arguments
+        # Return
         '''
         print('Building SVD model')
         list_arr = []
@@ -256,7 +264,10 @@ class BaseSVDFunctions():
         return self.svd_model
 
     def save_svd_model(self):
-        '''Save SVD model into file
+        '''Save SVD model into file. Default path is
+            ./trained_model/svd_model.pkl
+        # Arguments
+        # Return
         '''
         if not os.path.exists(TRAINED_MODEL_FOLDER):
             os.mkdir(TRAINED_MODEL_FOLDER)
@@ -265,6 +276,10 @@ class BaseSVDFunctions():
 
     def create_embedding_svd(self, document):
         '''Create svd embedding for a document
+        # Arguments
+            document: input document to generate embedding vector
+        # Return
+            embedding vector of the input document
         '''
         doc2vec_embedding = self.doc2vec_obj.create_document_embedding(document)
         svd_embedding = self.svd_model.transform(np.array([doc2vec_embedding]))
@@ -272,13 +287,22 @@ class BaseSVDFunctions():
 
     def load_svd_model(self):
         '''Load svd model from file
+        # Arguments
+        # Return
         '''
         with open(SVD_MODEL_PATH, 'rb') as f:
             self.svd_model = pickle.load(f)
 
 
 class BaseKNNFunction():
-    '''
+    '''Base class for KNN functions
+    # Methods
+        __init__(self)
+        create_knn(self)
+        fit_knn(self)
+        save_knn_model(self)
+        load_knn(self)
+        search_knn(self, document)
     '''
     def __init__(self):
         self.knn_model = self.create_knn()
@@ -286,10 +310,16 @@ class BaseKNNFunction():
         self.svd_obj.load_svd_model()
 
     def create_knn(self):
+        '''Create knn model with parameters in settings file
+        # Arguments
+        # Return
+        '''
         return NearestNeighbors(KNN_N_NEIGHBORS)
 
     def fit_knn(self):
         '''Fit KNN model to data
+        # Arguments
+        # Return
         '''
         print('Building KNN model')
         list_arr = []
@@ -304,26 +334,35 @@ class BaseKNNFunction():
 
     def save_knn_model(self):
         '''Save KNN model to file
+        # Arguments
+        # Return
         '''
         with open(KNN_MODEL_PATH, 'wb') as f:
             pickle.dump(self.knn_model, f)
 
     def load_knn(self):
         '''Load KNN model from file
+        # Arguments
+        # Return
         '''
         with open(KNN_MODEL_PATH, 'rb') as f:
             self.knn_model = pickle.load(f)
 
-    def search_knn(self, document):
+    def search_knn(self, document, n_neighbors=KNN_N_NEIGHBORS):
         '''Search for similar documents
+        # Arguments
+            document: the input document to do the search
+        # Return
+
         '''
         svd_embedding = self.svd_obj.create_embedding_svd(document)
-        result = self.knn_model.kneighbors(svd_embedding)
+        svd_embedding = np.expand_dims(svd_embedding, axis=0)
+        result = self.knn_model.kneighbors(svd_embedding, n_neighbors)
         return result
 
 
 def create_file_list():
-    '''Create file list
+    '''Create file list and save into file
     '''
     file_list = sorted(os.listdir(FULL_DATA_FOLDER))
     with open(FILE_LIST_PATH, 'wb') as f:
