@@ -97,11 +97,14 @@ class BaseTextFunction():
         if kwargs.get('to_lower', True) is True:
             processed_document = BaseTextFunction.to_lower(document)
         if kwargs.get('remove_special', True) is True:
-            processed_document = BaseTextFunction.remove_special(processed_document)
+            processed_document = BaseTextFunction.remove_special(
+                processed_document)
         if kwargs.get('remove_number', True) is True:
-            processed_document = BaseTextFunction.remove_number(processed_document)
+            processed_document = BaseTextFunction.remove_number(
+                processed_document)
         if kwargs.get('remove_space', True) is True:
-            processed_document = BaseTextFunction.remove_space(processed_document)
+            processed_document = BaseTextFunction.remove_space(
+                processed_document)
         return processed_document
 
     @staticmethod
@@ -256,7 +259,8 @@ class BaseSVDFunctions():
         list_arr = []
         for f in tqdm(file_list):
             with open(f, 'r') as fr:
-                embedding_vector = self.doc2vec_obj.create_document_embedding(fr.read())
+                embedding_vector = self.doc2vec_obj.create_document_embedding(
+                    fr.read())
                 list_arr.append(embedding_vector)
         list_arr = np.array(list_arr)
         self.svd_model.fit(list_arr)
@@ -281,7 +285,8 @@ class BaseSVDFunctions():
         # Return
             embedding vector of the input document
         '''
-        doc2vec_embedding = self.doc2vec_obj.create_document_embedding(document)
+        doc2vec_embedding = self.doc2vec_obj.create_document_embedding(
+            document)
         svd_embedding = self.svd_model.transform(np.array([doc2vec_embedding]))
         return np.squeeze(svd_embedding)
 
@@ -367,6 +372,7 @@ def create_file_list():
     file_list = sorted(os.listdir(FULL_DATA_FOLDER))
     with open(FILE_LIST_PATH, 'wb') as f:
         pickle.dump(file_list, f)
+
 
 if __name__ == '__main__':
     create_file_list()

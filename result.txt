@@ -1,0 +1,12 @@
+Top 8 similar document(s) of input file TUOITRE/text/0029.txt:
+__________________________________________________
+STT       File name                 Distance
+1    TUOITRE/text/0029.txt          0.0661
+2    TUOITRE/text/4780.txt          0.1562
+3    TUOITRE/text/2057.txt          0.1815
+4    TUOITRE/text/4072.txt          0.1918
+5    TUOITRE/text/3081.txt          0.1936
+6    TUOITRE/text/3757.txt          0.2061
+7    TUOITRE/text/2822.txt          0.2073
+8    TUOITRE/text/1719.txt          0.2096
+__________________________________________________
