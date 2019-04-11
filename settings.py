@@ -25,6 +25,12 @@ MIN_ALPHA = 0.00025
 MIN_COUNT = 1
 DM = 1  # distributed memory
 
+# TF-IDF config
+TFIDF_MAX_DF = 1.
+TFIDF_MIN_DF = 1
+TFIDF_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'tf_idf.pkl')
+TFIDF_MAX_FEATURE = 2048
+
 # SVD config
 SVD_OUTPUT_FEATURE = 256
 SVD_SOLVER = 'randomized'

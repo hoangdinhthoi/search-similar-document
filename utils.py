@@ -11,6 +11,7 @@ from gensim.models.doc2vec import Doc2Vec
 from gensim.models.doc2vec import TaggedDocument
 from gensim.parsing.preprocessing import strip_punctuation
 from gensim.parsing.preprocessing import strip_multiple_whitespaces
+from sklearn.feature_extraction.text import TfidfVectorizer
 from settings import ALLOWED_KEYWORDS
 from settings import FULL_DATA_FOLDER
 from settings import VECTOR_SIZE
@@ -30,6 +31,10 @@ from settings import file_list
 from settings import stop_words
 from settings import KNN_N_NEIGHBORS
 from settings import KNN_MODEL_PATH
+from settings import TFIDF_MAX_DF
+from settings import TFIDF_MIN_DF
+from settings import TFIDF_MODEL_PATH
+from settings import TFIDF_MAX_FEATURE
 
 
 class BaseTextFunction():
@@ -366,6 +371,42 @@ class BaseKNNFunction():
         return result
 
 
+class BaseTfidfFunction():
+    '''
+    '''
+    def __init__(self):
+        '''
+        '''
+        self.tfidf_model = self.create_tfidf_model()
+    
+    def create_tfidf_model(self):
+        return TfidfVectorizer(
+            max_df=TFIDF_MAX_DF,
+            min_df=TFIDF_MIN_DF,
+            max_features=TFIDF_MAX_FEATURE)
+    
+    def fit_tfidf(self):
+        print('Building TFIDF model')
+        list_arr = []
+        for f in tqdm(file_list):
+            with open(f, 'r') as fr:
+                document = BaseTextFunction.process_document(fr.read())
+                document = BaseTextFunction.tokenize(document)
+                document = ' '.join(document)
+                list_arr.append(document)
+        self.tfidf_model.fit(list_arr)
+        self.save_tfidf_model()
+        return self.tfidf_model
+
+    def save_tfidf_model(self):
+        with open(TFIDF_MODEL_PATH, 'wb') as f:
+            pickle.dump(self.tfidf_model, f)
+
+    def load_tfidf_model(self):
+        with open(TFIDF_MODEL_PATH, 'rb') as f:
+            self.tfidf_model = pickle.load(f)
+
+
 def create_file_list():
     '''Create file list and save into file
     '''
@@ -375,4 +416,11 @@ def create_file_list():
 
 
 if __name__ == '__main__':
-    create_file_list()
+    b = BaseTfidfFunction()
+    # b.fit_tfidf()
+    # print (b.tfidf_model.get_feature_names())
+    b.load_tfidf_model()
+    with open('/home/hdt/project/search_similar_document/TUOITRE/summary/0001.sum') as f:
+        content = f.read()
+    emb = b.tfidf_model.transform([content]).toarray()
+    print (emb.shape)
