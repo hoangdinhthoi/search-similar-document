@@ -1,12 +1,30 @@
-Top 8 similar document(s) of input file TUOITRE/text/0029.txt:
+Top 10 similar document(s) of ./TUOITRE/text/1590.txt:
+__________________________________________________
+Doc2vec result
 __________________________________________________
 STT       File name                 Distance
-1    TUOITRE/text/0029.txt          0.0661
-2    TUOITRE/text/4780.txt          0.1562
-3    TUOITRE/text/2057.txt          0.1815
-4    TUOITRE/text/4072.txt          0.1918
-5    TUOITRE/text/3081.txt          0.1936
-6    TUOITRE/text/3757.txt          0.2061
-7    TUOITRE/text/2822.txt          0.2073
-8    TUOITRE/text/1719.txt          0.2096
+1    TUOITRE/text/1590.txt          0.0157
+2    TUOITRE/text/2300.txt          0.0372
+3    TUOITRE/text/0825.txt          0.0375
+4    TUOITRE/text/0091.txt          0.0438
+5    TUOITRE/text/4388.txt          0.0441
+6    TUOITRE/text/2071.txt          0.0583
+7    TUOITRE/text/4415.txt          0.0596
+8    TUOITRE/text/3220.txt          0.0603
+9    TUOITRE/text/0914.txt          0.0634
+10   TUOITRE/text/0118.txt          0.0637
+
 __________________________________________________
+TF-IDF result
+__________________________________________________
+STT       File name                 Distance
+1    TUOITRE/text/1590.txt          1589
+2    TUOITRE/text/1591.txt          1590
+3    TUOITRE/text/4528.txt          4527
+4    TUOITRE/text/1755.txt          1754
+5    TUOITRE/text/3325.txt          3324
+6    TUOITRE/text/4391.txt          4390
+7    TUOITRE/text/3252.txt          3251
+8    TUOITRE/text/0120.txt          119
+9    TUOITRE/text/3328.txt          3327
+10   TUOITRE/text/1719.txt          1718

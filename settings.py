@@ -18,8 +18,8 @@ SUMMARY_DATA_FOLDER = os.path.join(TUOITRE_DATA_FOLDER, 'summary')
 # Doc2vec config
 TRAINED_MODEL_FOLDER = os.path.join(BASE_DIR, 'trained_model')
 DOC2VEC_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'doc2vec.model')
-DOC2VEC_MAX_EPOCHS = 5
-DOC2VEC_VECTOR_SIZE = 512
+DOC2VEC_MAX_EPOCHS = 50
+DOC2VEC_VECTOR_SIZE = 2048
 DOC2VEC_ALPHA = 0.001
 DOC2VEC_MIN_ALPHA = 0.00025
 DOC2VEC_MIN_COUNT = 1
@@ -40,7 +40,9 @@ SVD_TFIDF_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'svd_tfidf_model.pkl')
 
 # KNN config
 KNN_N_NEIGHBORS = 10
-KNN_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'knn_model.pkl')
+KNN_DOC2VEC_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'knn_doc2vec_model.pkl')
+KNN_TFIDF_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'knn_tdidf_model.pkl')
+
 
 FILE_LIST_PATH = os.path.join(BASE_DIR, 'file_list.pkl')
 with open(FILE_LIST_PATH, 'rb') as f:

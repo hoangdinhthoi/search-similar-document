@@ -321,7 +321,7 @@ class BaseSvdTfidfFunctions(BaseSvdDoc2vecFunctions):
         return np.squeeze(svd_embedding)
 
 
-class BaseKNNFunction():
+class BaseKNNDoc2vecFunction():
     '''Base class for KNN functions
     # Methods
         __init__(self)
@@ -333,8 +333,10 @@ class BaseKNNFunction():
     '''
     def __init__(self):
         self.knn_model = self.create_knn()
-        self.svd_obj = BaseSVDFunctions()
+        self.svd_obj = BaseSvdDoc2vecFunctions()
         self.svd_obj.load_svd_model()
+        self.knn_model_path = st.KNN_DOC2VEC_MODEL_PATH
+        self.message = 'with Doc2vec'
 
     def create_knn(self):
         '''Create knn model with parameters in settings file
@@ -348,7 +350,7 @@ class BaseKNNFunction():
         # Arguments
         # Return
         '''
-        print('Building KNN model')
+        print('Building KNN model', self.message)
         list_arr = []
         for f in tqdm(st.file_list):
             with open(f, 'r') as fr:
@@ -364,7 +366,7 @@ class BaseKNNFunction():
         # Arguments
         # Return
         '''
-        with open(st.KNN_MODEL_PATH, 'wb') as f:
+        with open(self.knn_model_path, 'wb') as f:
             pickle.dump(self.knn_model, f)
 
     def load_knn(self):
@@ -372,7 +374,7 @@ class BaseKNNFunction():
         # Arguments
         # Return
         '''
-        with open(KNN_MODEL_PATH, 'rb') as f:
+        with open(self.knn_model_path, 'rb') as f:
             self.knn_model = pickle.load(f)
 
     def search_knn(self, document, n_neighbors=st.KNN_N_NEIGHBORS):
@@ -386,6 +388,17 @@ class BaseKNNFunction():
         svd_embedding = np.expand_dims(svd_embedding, axis=0)
         result = self.knn_model.kneighbors(svd_embedding, n_neighbors)
         return result
+
+
+class BaseKNNTfidfFunction(BaseKNNDoc2vecFunction):
+    '''
+    '''
+    def __init__(self):
+        self.knn_model = self.create_knn()
+        self.svd_obj = BaseSvdTfidfFunctions()
+        self.svd_obj.load_svd_model()
+        self.knn_model_path = st.KNN_TFIDF_MODEL_PATH
+        self.message = 'with TF-IDF'
 
 
 class BaseTfidfFunction():
@@ -434,17 +447,6 @@ class BaseTfidfFunction():
 def create_file_list():
     '''Create file list and save into file
     '''
-    file_list = sorted(os.listdir(FULL_DATA_FOLDER))
-    with open(FILE_LIST_PATH, 'wb') as f:
+    file_list = sorted(os.listdir(st.FULL_DATA_FOLDER))
+    with open(st.FILE_LIST_PATH, 'wb') as f:
         pickle.dump(file_list, f)
-
-
-if __name__ == '__main__':
-    b = BaseTfidfFunction()
-    # b.fit_tfidf()
-    # print (b.tfidf_model.get_feature_names())
-    b.load_tfidf_model()
-    with open('/home/hdt/project/search_similar_document/TUOITRE/summary/0001.sum') as f:
-        content = f.read()
-    emb = b.tfidf_model.transform([content]).toarray()
-    print (emb.shape)
