@@ -2,6 +2,7 @@ import os
 import pickle
 import numpy as np
 import unicodedata as ud
+import settings as st
 from tqdm import tqdm
 from pyvi import ViTokenizer
 from sklearn.decomposition import TruncatedSVD
@@ -12,29 +13,6 @@ from gensim.models.doc2vec import TaggedDocument
 from gensim.parsing.preprocessing import strip_punctuation
 from gensim.parsing.preprocessing import strip_multiple_whitespaces
 from sklearn.feature_extraction.text import TfidfVectorizer
-from settings import ALLOWED_KEYWORDS
-from settings import FULL_DATA_FOLDER
-from settings import VECTOR_SIZE
-from settings import ALPHA
-from settings import MIN_ALPHA
-from settings import DM
-from settings import MIN_COUNT
-from settings import DOC2VEC_MODEL_PATH
-from settings import TRAINED_MODEL_FOLDER
-from settings import MAX_EPOCHS
-from settings import SVD_OUTPUT_FEATURE
-from settings import SVD_MODEL_PATH
-from settings import SVD_SOLVER
-from settings import SVD_ITERATION
-from settings import FILE_LIST_PATH
-from settings import file_list
-from settings import stop_words
-from settings import KNN_N_NEIGHBORS
-from settings import KNN_MODEL_PATH
-from settings import TFIDF_MAX_DF
-from settings import TFIDF_MIN_DF
-from settings import TFIDF_MODEL_PATH
-from settings import TFIDF_MAX_FEATURE
 
 
 class BaseTextFunction():
@@ -96,7 +74,7 @@ class BaseTextFunction():
         '''
         # These properties must be set by user via keyword arguments
         for kwarg in kwargs:
-            if kwarg not in ALLOWED_KEYWORDS:
+            if kwarg not in st.ALLOWED_KEYWORDS:
                 raise TypeError('Keyword argument not understood:', kwarg)
         processed_document = ud.normalize('NFC', document)
         if kwargs.get('to_lower', True) is True:
@@ -122,7 +100,7 @@ class BaseTextFunction():
         '''
         tokens = ViTokenizer.tokenize(document)
         tokens = tokens.split(' ')
-        return [t for t in tokens if t not in stop_words]
+        return [t for t in tokens if t not in st.stop_words]
 
 
 class BaseDoc2vecFunction():
@@ -149,7 +127,7 @@ class BaseDoc2vecFunction():
         print('_'*100)
         print('Creating tagged document for training doc2vec')
         tagged_document = []
-        for index, f in tqdm(enumerate(file_list)):
+        for index, f in tqdm(enumerate(st.file_list)):
             with open(f, 'r') as fr:
                 content = BaseTextFunction.process_document(fr.read())
                 words = BaseTextFunction.tokenize(content)
@@ -164,11 +142,11 @@ class BaseDoc2vecFunction():
             doc2vec model
         '''
         return Doc2Vec(
-            vector_size=VECTOR_SIZE,
-            alpha=ALPHA,
-            min_alpha=MIN_ALPHA,
-            min_count=MIN_COUNT,
-            dm=DM
+            vector_size=st.DOC2VEC_VECTOR_SIZE,
+            alpha=st.DOC2VEC_ALPHA,
+            min_alpha=st.DOC2VEC_MIN_ALPHA,
+            min_count=st.DOC2VEC_MIN_COUNT,
+            dm=st.DOC2VEC_DM
         )
 
     def train_doc2vec_model(self):
@@ -180,7 +158,7 @@ class BaseDoc2vecFunction():
         self.doc2vec_model.build_vocab(tagged_document)
         print('_'*100)
         print('Begin training')
-        for epoch in range(MAX_EPOCHS):
+        for epoch in range(st.DOC2VEC_MAX_EPOCHS):
             print('Epoch', epoch + 1)
             self.doc2vec_model.train(
                 tagged_document,
@@ -191,8 +169,8 @@ class BaseDoc2vecFunction():
             self.doc2vec_model.min_alpha = self.doc2vec_model.alpha
         self.save_doc2vec_model()
         print('_'*100)
-        print('Finish training after', MAX_EPOCHS, 'epochs')
-        print('Save doc2vec model at', DOC2VEC_MODEL_PATH)
+        print('Finish training after', st.DOC2VEC_MAX_EPOCHS, 'epochs')
+        print('Save doc2vec model at', st.DOC2VEC_MODEL_PATH)
 
     def save_doc2vec_model(self):
         '''Save a doc2vec model after training
@@ -201,16 +179,16 @@ class BaseDoc2vecFunction():
                 path to save is ./trained_model/doc2vec.model
         # Return
         '''
-        if not os.path.exists(TRAINED_MODEL_FOLDER):
-            os.mkdir(TRAINED_MODEL_FOLDER)
-        self.doc2vec_model.save(DOC2VEC_MODEL_PATH)
+        if not os.path.exists(st.TRAINED_MODEL_FOLDER):
+            os.mkdir(st.TRAINED_MODEL_FOLDER)
+        self.doc2vec_model.save(st.DOC2VEC_MODEL_PATH)
 
     def load_doc2vec_model(self):
         '''Load doc2vec mode from file
         # Arguments
         # Return
         '''
-        self.doc2vec_model = Doc2Vec.load(DOC2VEC_MODEL_PATH)
+        self.doc2vec_model = Doc2Vec.load(st.DOC2VEC_MODEL_PATH)
 
     def create_document_embedding(self, document):
         '''Generate document embedding from doc2vec model
@@ -223,13 +201,13 @@ class BaseDoc2vecFunction():
         document = BaseTextFunction.tokenize(document)
         return self.doc2vec_model.infer_vector(
             doc_words=document,
-            alpha=ALPHA,
-            min_alpha=MIN_ALPHA,
-            steps=MAX_EPOCHS*2,
+            alpha=st.DOC2VEC_ALPHA,
+            min_alpha=st.DOC2VEC_MIN_ALPHA,
+            steps=st.DOC2VEC_MAX_EPOCHS*2,
         )
 
 
-class BaseSVDFunctions():
+class BaseSvdDoc2vecFunctions():
     '''Class for basic functions of SVD
     # Methods
         __init__(self)
@@ -241,6 +219,7 @@ class BaseSVDFunctions():
     '''
     def __init__(self):
         self.svd_model = self.create_svd_model()
+        self.svd_model_path = st.SVD_DOC2VEC_MODEL_PATH
         self.doc2vec_obj = BaseDoc2vecFunction()
         self.doc2vec_obj.load_doc2vec_model()
 
@@ -250,9 +229,9 @@ class BaseSVDFunctions():
         # Return
         '''
         return TruncatedSVD(
-            n_components=SVD_OUTPUT_FEATURE,
-            algorithm=SVD_SOLVER,
-            n_iter=SVD_ITERATION
+            n_components=st.SVD_OUTPUT_FEATURE,
+            algorithm=st.SVD_SOLVER,
+            n_iter=st.SVD_ITERATION
         )
 
     def fit_svd_model(self):
@@ -260,9 +239,9 @@ class BaseSVDFunctions():
         # Arguments
         # Return
         '''
-        print('Building SVD model')
+        print('Building SVD model with Doc2Vec')
         list_arr = []
-        for f in tqdm(file_list):
+        for f in tqdm(st.file_list):
             with open(f, 'r') as fr:
                 embedding_vector = self.doc2vec_obj.create_document_embedding(
                     fr.read())
@@ -273,14 +252,13 @@ class BaseSVDFunctions():
         return self.svd_model
 
     def save_svd_model(self):
-        '''Save SVD model into file. Default path is
-            ./trained_model/svd_model.pkl
+        '''Save SVD model into file.
         # Arguments
         # Return
         '''
-        if not os.path.exists(TRAINED_MODEL_FOLDER):
-            os.mkdir(TRAINED_MODEL_FOLDER)
-        with open(SVD_MODEL_PATH, 'wb') as f:
+        if not os.path.exists(st.TRAINED_MODEL_FOLDER):
+            os.mkdir(st.TRAINED_MODEL_FOLDER)
+        with open(self.svd_model_path, 'wb') as f:
             pickle.dump(self.svd_model, f)
 
     def create_embedding_svd(self, document):
@@ -300,8 +278,47 @@ class BaseSVDFunctions():
         # Arguments
         # Return
         '''
-        with open(SVD_MODEL_PATH, 'rb') as f:
+        with open(self.svd_model_path, 'rb') as f:
             self.svd_model = pickle.load(f)
+
+
+class BaseSvdTfidfFunctions(BaseSvdDoc2vecFunctions):
+    '''
+    '''
+    def __init__(self):
+        self.svd_model = self.create_svd_model()
+        self.svd_model_path = st.SVD_TFIDF_MODEL_PATH
+        self.tfidf_model = BaseTfidfFunction()
+        self.tfidf_model.load_tfidf_model()
+
+    def fit_svd_model(self):
+        '''Fit data to svd model
+        # Arguments
+        # Return
+        '''
+        print('Building SVD model with TFIDF')
+        list_arr = []
+        for f in tqdm(st.file_list):
+            with open(f, 'r') as fr:
+                embedding_vector = self.tfidf_model.create_document_embedding(
+                    fr.read())
+                list_arr.append(embedding_vector)
+        list_arr = np.array(list_arr)
+        self.svd_model.fit(list_arr)
+        self.save_svd_model()
+        return self.svd_model
+
+    def create_embedding_svd(self, document):
+        '''Create svd embedding for a document wit TFIDF
+        # Arguments
+            document: input document to generate embedding vector
+        # Return
+            embedding vector of the input document
+        '''
+        tfidf_embedding = self.tfidf_model.create_document_embedding(
+            document)
+        svd_embedding = self.svd_model.transform([tfidf_embedding])
+        return np.squeeze(svd_embedding)
 
 
 class BaseKNNFunction():
@@ -324,7 +341,7 @@ class BaseKNNFunction():
         # Arguments
         # Return
         '''
-        return NearestNeighbors(KNN_N_NEIGHBORS)
+        return NearestNeighbors(st.KNN_N_NEIGHBORS)
 
     def fit_knn(self):
         '''Fit KNN model to data
@@ -333,7 +350,7 @@ class BaseKNNFunction():
         '''
         print('Building KNN model')
         list_arr = []
-        for f in tqdm(file_list):
+        for f in tqdm(st.file_list):
             with open(f, 'r') as fr:
                 svd_embedding = self.svd_obj.create_embedding_svd(fr.read())
                 list_arr.append(svd_embedding)
@@ -347,7 +364,7 @@ class BaseKNNFunction():
         # Arguments
         # Return
         '''
-        with open(KNN_MODEL_PATH, 'wb') as f:
+        with open(st.KNN_MODEL_PATH, 'wb') as f:
             pickle.dump(self.knn_model, f)
 
     def load_knn(self):
@@ -358,7 +375,7 @@ class BaseKNNFunction():
         with open(KNN_MODEL_PATH, 'rb') as f:
             self.knn_model = pickle.load(f)
 
-    def search_knn(self, document, n_neighbors=KNN_N_NEIGHBORS):
+    def search_knn(self, document, n_neighbors=st.KNN_N_NEIGHBORS):
         '''Search for similar documents
         # Arguments
             document: the input document to do the search
@@ -381,14 +398,14 @@ class BaseTfidfFunction():
     
     def create_tfidf_model(self):
         return TfidfVectorizer(
-            max_df=TFIDF_MAX_DF,
-            min_df=TFIDF_MIN_DF,
-            max_features=TFIDF_MAX_FEATURE)
+            max_df=st.TFIDF_MAX_DF,
+            min_df=st.TFIDF_MIN_DF,
+            max_features=st.TFIDF_MAX_FEATURE)
     
     def fit_tfidf(self):
         print('Building TFIDF model')
         list_arr = []
-        for f in tqdm(file_list):
+        for f in tqdm(st.file_list):
             with open(f, 'r') as fr:
                 document = BaseTextFunction.process_document(fr.read())
                 document = BaseTextFunction.tokenize(document)
@@ -398,12 +415,19 @@ class BaseTfidfFunction():
         self.save_tfidf_model()
         return self.tfidf_model
 
+    def create_document_embedding(self, document):
+        document = BaseTextFunction.process_document(document)
+        document = BaseTextFunction.tokenize(document)
+        document = ' '.join(document)
+        embedding_vector = self.tfidf_model.transform([document])
+        return np.squeeze(embedding_vector.toarray())
+
     def save_tfidf_model(self):
-        with open(TFIDF_MODEL_PATH, 'wb') as f:
+        with open(st.TFIDF_MODEL_PATH, 'wb') as f:
             pickle.dump(self.tfidf_model, f)
 
     def load_tfidf_model(self):
-        with open(TFIDF_MODEL_PATH, 'rb') as f:
+        with open(st.TFIDF_MODEL_PATH, 'rb') as f:
             self.tfidf_model = pickle.load(f)
 
 

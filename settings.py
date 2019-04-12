@@ -18,12 +18,12 @@ SUMMARY_DATA_FOLDER = os.path.join(TUOITRE_DATA_FOLDER, 'summary')
 # Doc2vec config
 TRAINED_MODEL_FOLDER = os.path.join(BASE_DIR, 'trained_model')
 DOC2VEC_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'doc2vec.model')
-MAX_EPOCHS = 50
-VECTOR_SIZE = 2048
-ALPHA = 0.001
-MIN_ALPHA = 0.00025
-MIN_COUNT = 1
-DM = 1  # distributed memory
+DOC2VEC_MAX_EPOCHS = 5
+DOC2VEC_VECTOR_SIZE = 512
+DOC2VEC_ALPHA = 0.001
+DOC2VEC_MIN_ALPHA = 0.00025
+DOC2VEC_MIN_COUNT = 1
+DOC2VEC_DM = 1  # distributed memory
 
 # TF-IDF config
 TFIDF_MAX_DF = 1.
@@ -35,7 +35,8 @@ TFIDF_MAX_FEATURE = 2048
 SVD_OUTPUT_FEATURE = 256
 SVD_SOLVER = 'randomized'
 SVD_ITERATION = 10
-SVD_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'svd_model.pkl')
+SVD_DOC2VEC_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'svd_doc2vec_model.pkl')
+SVD_TFIDF_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'svd_tfidf_model.pkl')
 
 # KNN config
 KNN_N_NEIGHBORS = 10
