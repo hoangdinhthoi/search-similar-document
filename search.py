@@ -69,6 +69,6 @@ else:
     for i in range(args.n_neighbors):
         file_name = '/'.join(file_list[index_tfidf[i]].split('/')[-3:])
         result_text += str(i+1) + ' ' * (5-len(str(i+1))) + file_name
-        result_text += ' ' * 10 + str(index_tfidf[i])[:6] + '\n'
+        result_text += ' ' * 10 + str(distance_tfidf[i])[:6] + '\n'
     with open(args.output_file, 'w') as f:
         f.write(result_text)

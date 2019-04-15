@@ -382,7 +382,6 @@ class BaseKNNDoc2vecFunction():
         # Arguments
             document: the input document to do the search
         # Return
-
         '''
         svd_embedding = self.svd_obj.create_embedding_svd(document)
         svd_embedding = np.expand_dims(svd_embedding, axis=0)

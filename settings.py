@@ -26,8 +26,8 @@ DOC2VEC_MIN_COUNT = 1
 DOC2VEC_DM = 1  # distributed memory
 
 # TF-IDF config
-TFIDF_MAX_DF = 1.
-TFIDF_MIN_DF = 1
+TFIDF_MAX_DF = 0.7
+TFIDF_MIN_DF = 0
 TFIDF_MODEL_PATH = os.path.join(TRAINED_MODEL_FOLDER, 'tf_idf.pkl')
 TFIDF_MAX_FEATURE = 2048
 
