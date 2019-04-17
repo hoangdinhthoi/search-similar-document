@@ -1,0 +1,30 @@
+Top 10 similar document(s) of ./TUOITRE/text/4301.txt:
+__________________________________________________
+Doc2vec result
+__________________________________________________
+STT       File name                 Distance
+1    TUOITRE/text/4301.txt          0.1217
+2    TUOITRE/text/4659.txt          0.1259
+3    TUOITRE/text/4661.txt          0.1671
+4    TUOITRE/text/2993.txt          0.1708
+5    TUOITRE/text/3744.txt          0.1733
+6    TUOITRE/text/2809.txt          0.1795
+7    TUOITRE/text/3494.txt          0.1811
+8    TUOITRE/text/0108.txt          0.1842
+9    TUOITRE/text/3353.txt          0.1940
+10   TUOITRE/text/3524.txt          0.1969
+
+__________________________________________________
+TF-IDF result
+__________________________________________________
+STT       File name                 Distance
+1    TUOITRE/text/4301.txt          0.0
+2    TUOITRE/text/1493.txt          0.5273
+3    TUOITRE/text/1023.txt          0.5746
+4    TUOITRE/text/2614.txt          0.5801
+5    TUOITRE/text/3495.txt          0.5816
+6    TUOITRE/text/2569.txt          0.6012
+7    TUOITRE/text/1003.txt          0.6210
+8    TUOITRE/text/2570.txt          0.6261
+9    TUOITRE/text/1492.txt          0.6271
+10   TUOITRE/text/3496.txt          0.6304

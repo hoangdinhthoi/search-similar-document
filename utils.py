@@ -1,0 +1,451 @@
+import os
+import pickle
+import numpy as np
+import unicodedata as ud
+import settings as st
+from tqdm import tqdm
+from pyvi import ViTokenizer
+from sklearn.decomposition import TruncatedSVD
+from sklearn.neighbors import NearestNeighbors
+from gensim.parsing.preprocessing import strip_numeric
+from gensim.models.doc2vec import Doc2Vec
+from gensim.models.doc2vec import TaggedDocument
+from gensim.parsing.preprocessing import strip_punctuation
+from gensim.parsing.preprocessing import strip_multiple_whitespaces
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+
+class BaseTextFunction():
+    '''Class for basic processing text function
+    # Methods
+        to_lower(document)
+        remove_space(document)
+        remove_special(document)
+        remove_number(document)
+        processe_document(document)
+        tokenize(document)
+    '''
+    @staticmethod
+    def to_lower(document):
+        '''Convert document to lower-case document
+        # Arguments
+            document: input document to be lower-cased
+        # Returns
+            lower-case document
+        '''
+        return document.lower()
+
+    @staticmethod
+    def remove_space(document):
+        '''Remove multiple white space of a document
+        # Arguments
+            document: input document before removing white space
+        # Return
+            document after being removed white space
+        '''
+        return strip_multiple_whitespaces(document)
+
+    @staticmethod
+    def remove_special(document):
+        '''Remove sepcial characters from a document.
+        Eg. comma, semi-colon, question mark, etc
+        # Arguments
+            document: input document before removing special characters
+        # Return
+            document after being removed special characters
+        '''
+        return strip_punctuation(document)
+
+    @staticmethod
+    def remove_number(document):
+        '''Remove number from a document.
+        # Arguments
+            document: input document before removing number
+        # Return
+            document after being removed number
+        '''
+        return strip_numeric(document)
+
+    @staticmethod
+    def process_document(document, *args, **kwargs):
+        '''Process a document with desired functionality
+        # Return
+            document after being processed
+        '''
+        # These properties must be set by user via keyword arguments
+        for kwarg in kwargs:
+            if kwarg not in st.ALLOWED_KEYWORDS:
+                raise TypeError('Keyword argument not understood:', kwarg)
+        processed_document = ud.normalize('NFC', document)
+        if kwargs.get('to_lower', True) is True:
+            processed_document = BaseTextFunction.to_lower(document)
+        if kwargs.get('remove_special', True) is True:
+            processed_document = BaseTextFunction.remove_special(
+                processed_document)
+        if kwargs.get('remove_number', True) is True:
+            processed_document = BaseTextFunction.remove_number(
+                processed_document)
+        if kwargs.get('remove_space', True) is True:
+            processed_document = BaseTextFunction.remove_space(
+                processed_document)
+        return processed_document
+
+    @staticmethod
+    def tokenize(document):
+        '''Tokeinize a document into list of tokens and remove stop words
+        # Arguments
+            document: input document for tokenizing
+        # Return
+            list of tokens of the input document
+        '''
+        tokens = ViTokenizer.tokenize(document)
+        tokens = tokens.split(' ')
+        return [t for t in tokens if t not in st.stop_words]
+
+
+class BaseDoc2vecFunction():
+    '''Class for basic Doc2Vec functions
+    # Methods
+        __init__(self)
+        create_tagged_document(self)
+        create_doc2vec_model(self)
+        train_doc2vec_model(self)
+        save_doc2vec_model(self)
+        load_doc2vec_model(self)
+        create_document_embedding(self, document)
+    '''
+    def __init__(self):
+        self.doc2vec_model = self.create_doc2vec_model()
+
+    def create_tagged_document(self):
+        '''Create tagged document before training doc2vec algorithm
+        # Arguments
+            document_folder: folder of the training data
+        # Return
+            list of tagged document
+        '''
+        print('_'*100)
+        print('Creating tagged document for training doc2vec')
+        tagged_document = []
+        for index, f in tqdm(enumerate(st.file_list)):
+            with open(f, 'r') as fr:
+                content = BaseTextFunction.process_document(fr.read())
+                words = BaseTextFunction.tokenize(content)
+                tagged_document.append(TaggedDocument(
+                    words=words, tags=str(index)))
+        return tagged_document
+
+    def create_doc2vec_model(self):
+        '''Create a doc2vec model from gensim with defined parameters in settings file
+        # Arguments
+        # Return
+            doc2vec model
+        '''
+        return Doc2Vec(
+            vector_size=st.DOC2VEC_VECTOR_SIZE,
+            alpha=st.DOC2VEC_ALPHA,
+            min_alpha=st.DOC2VEC_MIN_ALPHA,
+            min_count=st.DOC2VEC_MIN_COUNT,
+            dm=st.DOC2VEC_DM
+        )
+
+    def train_doc2vec_model(self):
+        '''Train & save doc2vec model
+        # Arguments
+        # Return
+        '''
+        tagged_document = self.create_tagged_document()
+        self.doc2vec_model.build_vocab(tagged_document)
+        print('_'*100)
+        print('Begin training')
+        for epoch in range(st.DOC2VEC_MAX_EPOCHS):
+            print('Epoch', epoch + 1)
+            self.doc2vec_model.train(
+                tagged_document,
+                total_examples=self.doc2vec_model.corpus_count,
+                epochs=self.doc2vec_model.iter
+            )
+            self.doc2vec_model.alpha -= 0.0001
+            self.doc2vec_model.min_alpha = self.doc2vec_model.alpha
+        self.save_doc2vec_model()
+        print('_'*100)
+        print('Finish training after', st.DOC2VEC_MAX_EPOCHS, 'epochs')
+        print('Save doc2vec model at', st.DOC2VEC_MODEL_PATH)
+
+    def save_doc2vec_model(self):
+        '''Save a doc2vec model after training
+        # Arguments
+            model: doc2vec model after training, default
+                path to save is ./trained_model/doc2vec.model
+        # Return
+        '''
+        if not os.path.exists(st.TRAINED_MODEL_FOLDER):
+            os.mkdir(st.TRAINED_MODEL_FOLDER)
+        self.doc2vec_model.save(st.DOC2VEC_MODEL_PATH)
+
+    def load_doc2vec_model(self):
+        '''Load doc2vec mode from file
+        # Arguments
+        # Return
+        '''
+        self.doc2vec_model = Doc2Vec.load(st.DOC2VEC_MODEL_PATH)
+
+    def create_document_embedding(self, document):
+        '''Generate document embedding from doc2vec model
+        # Arguents
+            document: input document to generate embedding
+        # Return
+            embedding of the input document
+        '''
+        document = BaseTextFunction.process_document(document)
+        document = BaseTextFunction.tokenize(document)
+        return self.doc2vec_model.infer_vector(
+            doc_words=document,
+            alpha=st.DOC2VEC_ALPHA,
+            min_alpha=st.DOC2VEC_MIN_ALPHA,
+            steps=st.DOC2VEC_MAX_EPOCHS*2,
+        )
+
+
+class BaseSvdDoc2vecFunctions():
+    '''Class for basic functions of SVD
+    # Methods
+        __init__(self)
+        create_svd_model(self)
+        fit_svd_model(self)
+        save_svd_model(self)
+        create_embedding_svd(self, document)
+        load_svd_model(self)
+    '''
+    def __init__(self):
+        self.svd_model = self.create_svd_model()
+        self.svd_model_path = st.SVD_DOC2VEC_MODEL_PATH
+        self.doc2vec_obj = BaseDoc2vecFunction()
+        self.doc2vec_obj.load_doc2vec_model()
+
+    def create_svd_model(self):
+        '''Create SVD from parameters in setting file
+        # Arguments
+        # Return
+        '''
+        return TruncatedSVD(
+            n_components=st.SVD_OUTPUT_FEATURE,
+            algorithm=st.SVD_SOLVER,
+            n_iter=st.SVD_ITERATION
+        )
+
+    def fit_svd_model(self):
+        '''Fit data to svd model
+        # Arguments
+        # Return
+        '''
+        print('Building SVD model with Doc2Vec')
+        list_arr = []
+        for f in tqdm(st.file_list):
+            with open(f, 'r') as fr:
+                embedding_vector = self.doc2vec_obj.create_document_embedding(
+                    fr.read())
+                list_arr.append(embedding_vector)
+        list_arr = np.array(list_arr)
+        self.svd_model.fit(list_arr)
+        self.save_svd_model()
+        return self.svd_model
+
+    def save_svd_model(self):
+        '''Save SVD model into file.
+        # Arguments
+        # Return
+        '''
+        if not os.path.exists(st.TRAINED_MODEL_FOLDER):
+            os.mkdir(st.TRAINED_MODEL_FOLDER)
+        with open(self.svd_model_path, 'wb') as f:
+            pickle.dump(self.svd_model, f)
+
+    def create_embedding_svd(self, document):
+        '''Create svd embedding for a document
+        # Arguments
+            document: input document to generate embedding vector
+        # Return
+            embedding vector of the input document
+        '''
+        doc2vec_embedding = self.doc2vec_obj.create_document_embedding(
+            document)
+        svd_embedding = self.svd_model.transform(np.array([doc2vec_embedding]))
+        return np.squeeze(svd_embedding)
+
+    def load_svd_model(self):
+        '''Load svd model from file
+        # Arguments
+        # Return
+        '''
+        with open(self.svd_model_path, 'rb') as f:
+            self.svd_model = pickle.load(f)
+
+
+class BaseSvdTfidfFunctions(BaseSvdDoc2vecFunctions):
+    '''
+    '''
+    def __init__(self):
+        self.svd_model = self.create_svd_model()
+        self.svd_model_path = st.SVD_TFIDF_MODEL_PATH
+        self.tfidf_model = BaseTfidfFunction()
+        self.tfidf_model.load_tfidf_model()
+
+    def fit_svd_model(self):
+        '''Fit data to svd model
+        # Arguments
+        # Return
+        '''
+        print('Building SVD model with TFIDF')
+        list_arr = []
+        for f in tqdm(st.file_list):
+            with open(f, 'r') as fr:
+                embedding_vector = self.tfidf_model.create_document_embedding(
+                    fr.read())
+                list_arr.append(embedding_vector)
+        list_arr = np.array(list_arr)
+        self.svd_model.fit(list_arr)
+        self.save_svd_model()
+        return self.svd_model
+
+    def create_embedding_svd(self, document):
+        '''Create svd embedding for a document wit TFIDF
+        # Arguments
+            document: input document to generate embedding vector
+        # Return
+            embedding vector of the input document
+        '''
+        tfidf_embedding = self.tfidf_model.create_document_embedding(
+            document)
+        svd_embedding = self.svd_model.transform([tfidf_embedding])
+        return np.squeeze(svd_embedding)
+
+
+class BaseKNNDoc2vecFunction():
+    '''Base class for KNN functions
+    # Methods
+        __init__(self)
+        create_knn(self)
+        fit_knn(self)
+        save_knn_model(self)
+        load_knn(self)
+        search_knn(self, document)
+    '''
+    def __init__(self):
+        self.knn_model = self.create_knn()
+        self.svd_obj = BaseSvdDoc2vecFunctions()
+        self.svd_obj.load_svd_model()
+        self.knn_model_path = st.KNN_DOC2VEC_MODEL_PATH
+        self.message = 'with Doc2vec'
+
+    def create_knn(self):
+        '''Create knn model with parameters in settings file
+        # Arguments
+        # Return
+        '''
+        return NearestNeighbors(st.KNN_N_NEIGHBORS)
+
+    def fit_knn(self):
+        '''Fit KNN model to data
+        # Arguments
+        # Return
+        '''
+        print('Building KNN model', self.message)
+        list_arr = []
+        for f in tqdm(st.file_list):
+            with open(f, 'r') as fr:
+                svd_embedding = self.svd_obj.create_embedding_svd(fr.read())
+                list_arr.append(svd_embedding)
+        list_arr = np.array(list_arr)
+        self.knn_model.fit(list_arr)
+        self.save_knn_model()
+        return self.knn_model
+
+    def save_knn_model(self):
+        '''Save KNN model to file
+        # Arguments
+        # Return
+        '''
+        with open(self.knn_model_path, 'wb') as f:
+            pickle.dump(self.knn_model, f)
+
+    def load_knn(self):
+        '''Load KNN model from file
+        # Arguments
+        # Return
+        '''
+        with open(self.knn_model_path, 'rb') as f:
+            self.knn_model = pickle.load(f)
+
+    def search_knn(self, document, n_neighbors=st.KNN_N_NEIGHBORS):
+        '''Search for similar documents
+        # Arguments
+            document: the input document to do the search
+        # Return
+        '''
+        svd_embedding = self.svd_obj.create_embedding_svd(document)
+        svd_embedding = np.expand_dims(svd_embedding, axis=0)
+        result = self.knn_model.kneighbors(svd_embedding, n_neighbors)
+        return result
+
+
+class BaseKNNTfidfFunction(BaseKNNDoc2vecFunction):
+    '''
+    '''
+    def __init__(self):
+        self.knn_model = self.create_knn()
+        self.svd_obj = BaseSvdTfidfFunctions()
+        self.svd_obj.load_svd_model()
+        self.knn_model_path = st.KNN_TFIDF_MODEL_PATH
+        self.message = 'with TF-IDF'
+
+
+class BaseTfidfFunction():
+    '''
+    '''
+    def __init__(self):
+        '''
+        '''
+        self.tfidf_model = self.create_tfidf_model()
+    
+    def create_tfidf_model(self):
+        return TfidfVectorizer(
+            max_df=st.TFIDF_MAX_DF,
+            min_df=st.TFIDF_MIN_DF,
+            max_features=st.TFIDF_MAX_FEATURE)
+    
+    def fit_tfidf(self):
+        print('Building TFIDF model')
+        list_arr = []
+        for f in tqdm(st.file_list):
+            with open(f, 'r') as fr:
+                document = BaseTextFunction.process_document(fr.read())
+                document = BaseTextFunction.tokenize(document)
+                document = ' '.join(document)
+                list_arr.append(document)
+        self.tfidf_model.fit(list_arr)
+        self.save_tfidf_model()
+        return self.tfidf_model
+
+    def create_document_embedding(self, document):
+        document = BaseTextFunction.process_document(document)
+        document = BaseTextFunction.tokenize(document)
+        document = ' '.join(document)
+        embedding_vector = self.tfidf_model.transform([document])
+        return np.squeeze(embedding_vector.toarray())
+
+    def save_tfidf_model(self):
+        with open(st.TFIDF_MODEL_PATH, 'wb') as f:
+            pickle.dump(self.tfidf_model, f)
+
+    def load_tfidf_model(self):
+        with open(st.TFIDF_MODEL_PATH, 'rb') as f:
+            self.tfidf_model = pickle.load(f)
+
+
+def create_file_list():
+    '''Create file list and save into file
+    '''
+    file_list = sorted(os.listdir(st.FULL_DATA_FOLDER))
+    with open(st.FILE_LIST_PATH, 'wb') as f:
+        pickle.dump(file_list, f)
