@@ -31,7 +31,7 @@ parser.add_argument(
     type=str,
     nargs="?",
     help="The output file to write result.",
-    default="./result.txt"
+    default="result.txt"
 )
 args = parser.parse_args()
 if args.input_file is None:
